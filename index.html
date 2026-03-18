@@ -8,6 +8,8 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <!-- Используем надежный источник для парсера FIT -->
     <script src="https://cdn.jsdelivr.net/npm/fit-file-parser@1.5.0/dist/fit-file-parser.min.js"></script>
 
     <style>
@@ -51,7 +53,7 @@
                         <span class="text-blue-500">📁</span> Крок 1: Завантаження
                     </h2>
                     <input type="file" id="track-input" accept=".gpx,.fit" class="block w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer" />
-                    <p class="text-[10px] text-gray-400 mt-3 leading-tight">Оберіть файл .GPX або .FIT (Strava/Garmin). Дані будуть відображені на карті.</p>
+                    <p class="text-[10px] text-gray-400 mt-3 leading-tight">Оберіть файл .GPX або .FIT. Програма автоматично розпізнає формат.</p>
                 </div>
 
                 <!-- Крок 2 -->
@@ -67,7 +69,6 @@
                             Обрізати все поза рамкою
                         </button>
                     </div>
-                    <p class="text-[10px] text-gray-400 mt-3 leading-tight">Використовуйте рамку, щоб видалити зайві частини треку (наприклад, поїздку в авто до початку тренування).</p>
                 </div>
 
                 <!-- Крок 3 -->
@@ -90,8 +91,8 @@
                     </div>
 
                     <div class="text-[11px] text-gray-500 mt-2 space-y-2 leading-relaxed bg-blue-50/50 p-3 rounded-xl border border-blue-100">
-                        <p>• <b>Додавання:</b> Клікніть на карті, щоб вставити нову точку в найближчий відрізок маршруту.</p>
-                        <p>• <b>Видалення:</b> Натисніть правою кнопкою миші на будь-яку точку, щоб її видалити.</p>
+                        <p>• <b>Додавання:</b> Клікніть на лінію треку, щоб додати нову точку.</p>
+                        <p>• <b>Видалення:</b> Права кнопка миші на помаранчевій точці видаляє її.</p>
                     </div>
                 </div>
 
@@ -103,7 +104,6 @@
                     <button id="export-btn" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg transition disabled:opacity-50 disabled:bg-gray-200" disabled>
                         Завантажити GPX
                     </button>
-                    <p class="text-[10px] text-gray-400 mt-3 leading-tight">Експортуйте виправлений файл та завантажте його у Strava вручну. Всі сенсори (пульс, потужність) зберігаються.</p>
                 </div>
             </aside>
 
@@ -112,7 +112,7 @@
                     <div id="map"></div>
                     <div id="loading-overlay" class="absolute inset-0 bg-white/90 z-[2000] flex flex-col items-center justify-center hidden">
                         <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mb-4"></div>
-                        <p class="text-orange-600 font-medium text-sm">Обробка файлу...</p>
+                        <p class="text-orange-600 font-medium text-sm">Обробка...</p>
                     </div>
                 </div>
             </main>
@@ -127,25 +127,16 @@
         let cropLayer = null;
         let cropHandles = [];
         let editMarkers = [];
-
         let historyStack = [];
         let redoStack = [];
 
         function initMap() {
-            map = L.map('map', {
-                doubleClickZoom: false
-            }).setView([49.9935, 36.2304], 9);
-            
+            map = L.map('map', { doubleClickZoom: false }).setView([49.9935, 36.2304], 9);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '© OpenStreetMap contributors'
+                attribution: '© OpenStreetMap'
             }).addTo(map);
 
-            map.on('click', (e) => {
-                if (isEditMode) {
-                    insertPointAt(e.latlng);
-                }
-            });
-            
+            map.on('click', (e) => { if (isEditMode) insertPointAt(e.latlng); });
             window.addEventListener('keydown', (e) => {
                 if (e.ctrlKey || e.metaKey) {
                     if (e.key === 'z') { e.preventDefault(); undoAction(); }
@@ -156,7 +147,7 @@
 
         function saveToHistory() {
             historyStack.push(JSON.stringify(trackPoints));
-            if (historyStack.length > 100) historyStack.shift();
+            if (historyStack.length > 50) historyStack.shift();
             redoStack = []; 
             updateUndoRedoButtons();
         }
@@ -190,15 +181,17 @@
             if (!file) return;
             document.getElementById('loading-overlay').classList.remove('hidden');
             try {
-                if (file.name.toLowerCase().endsWith('.fit')) await parseFitFile(file);
-                else await parseGpxFile(file);
-                historyStack = [];
-                redoStack = [];
+                if (file.name.toLowerCase().endsWith('.fit')) {
+                    await parseFitFile(file);
+                } else {
+                    await parseGpxFile(file);
+                }
+                historyStack = []; redoStack = [];
                 updateUndoRedoButtons();
                 drawTrack(true);
             } catch (err) {
-                console.error(err);
-                alert("Помилка при зчитуванні файлу.");
+                console.error("Critical Error:", err);
+                alert("Помилка при завантаженні: " + err.message);
             } finally {
                 document.getElementById('loading-overlay').classList.add('hidden');
             }
@@ -221,22 +214,50 @@
 
         async function parseFitFile(file) {
             const buffer = await file.arrayBuffer();
-            const fitParser = new window.FitParser({ force: true, mode: 'both' });
+            
+            // Прямая попытка достать конструктор
+            let Parser = window.FitParser;
+            if (Parser && Parser.default) Parser = Parser.default;
+
+            if (typeof Parser !== 'function') {
+                throw new Error("Не вдалося ініціалізувати обробник FIT-файлів. Спробуйте інший браузер.");
+            }
+
+            const fitParser = new Parser({ force: true, mode: 'both' });
+
             return new Promise((resolve, reject) => {
                 fitParser.parse(buffer, (error, data) => {
-                    if (error) reject(error);
-                    else {
-                        trackPoints = (data.records || [])
-                            .filter(r => r.position_lat && r.position_long)
-                            .map(r => ({
-                                lat: r.position_lat,
-                                lng: r.position_long,
-                                time: r.timestamp ? new Date(r.timestamp).toISOString() : null,
-                                ele: r.altitude,
-                                hr: r.heart_rate,
-                                cad: r.cadence,
-                                pow: r.power
-                            }));
+                    if (error) return reject(new Error("Файл пошкоджено: " + error));
+                    
+                    const scToDeg = (sc) => sc * (180 / Math.pow(2, 31));
+                    let records = [];
+
+                    // Извлекаем записи из всех возможных уровней вложенности FIT
+                    if (data.records) {
+                        records = data.records;
+                    } else if (data.activity && data.activity.sessions) {
+                        data.activity.sessions.forEach(s => {
+                            if (s.laps) s.laps.forEach(l => {
+                                if (l.records) records = records.concat(l.records);
+                            });
+                        });
+                    }
+
+                    trackPoints = records
+                        .filter(r => r.position_lat !== undefined && r.position_long !== undefined)
+                        .map(r => ({
+                            lat: scToDeg(r.position_lat),
+                            lng: scToDeg(r.position_long),
+                            time: r.timestamp ? new Date(r.timestamp).toISOString() : null,
+                            ele: r.altitude,
+                            hr: r.heart_rate,
+                            cad: r.cadence,
+                            pow: r.power
+                        }));
+
+                    if (trackPoints.length === 0) {
+                        reject(new Error("GPS-дані не знайдені. Можливо, це Indoor-тренування без GPS."));
+                    } else {
                         resolve();
                     }
                 });
@@ -271,23 +292,18 @@
 
         function renderEditMarkers() {
             clearEditMarkers();
-            const skip = Math.max(1, Math.floor(trackPoints.length / 800)); 
-
+            const skip = Math.max(1, Math.floor(trackPoints.length / 400)); 
             trackPoints.forEach((pt, index) => {
                 if (index % skip !== 0 && index !== trackPoints.length - 1 && index !== 0) return;
-                
                 const marker = L.marker([pt.lat, pt.lng], {
-                    draggable: false, // Відключено перетягування за вашим запитом
-                    icon: L.divIcon({ className: 'edit-marker', iconSize: [12, 12] })
+                    icon: L.divIcon({ className: 'edit-marker', iconSize: [10, 10] })
                 }).addTo(map);
-
                 marker.on('contextmenu', (e) => {
                     L.DomEvent.stopPropagation(e);
                     saveToHistory();
                     trackPoints.splice(index, 1);
                     drawTrack(false);
                 });
-
                 editMarkers.push(marker);
             });
         }
@@ -298,13 +314,8 @@
         }
 
         function insertPointAt(latlng) {
+            if (trackPoints.length === 0) return;
             saveToHistory();
-            if (trackPoints.length < 2) {
-                trackPoints.push({ lat: latlng.lat, lng: latlng.lng });
-                drawTrack(false);
-                return;
-            }
-
             let minDistance = Infinity;
             let insertIndex = 1;
 
@@ -315,24 +326,11 @@
                 const d2 = latlng.distanceTo(p2);
                 const segmentLength = p1.distanceTo(p2);
                 const diff = (d1 + d2) - segmentLength;
-
-                if (diff < minDistance) {
-                    minDistance = diff;
-                    insertIndex = i + 1;
-                }
+                if (diff < minDistance) { minDistance = diff; insertIndex = i + 1; }
             }
 
             const ref = trackPoints[insertIndex - 1];
-            trackPoints.splice(insertIndex, 0, {
-                lat: latlng.lat,
-                lng: latlng.lng,
-                time: ref.time,
-                ele: ref.ele,
-                hr: ref.hr, 
-                cad: ref.cad, 
-                pow: ref.pow
-            });
-
+            trackPoints.splice(insertIndex, 0, { ...ref, lat: latlng.lat, lng: latlng.lng });
             drawTrack(false);
         }
 
@@ -353,13 +351,13 @@
         });
 
         function initCropArea() {
-            const bounds = map.getBounds().pad(-0.25);
+            const bounds = map.getBounds().pad(-0.2);
             createCropRect(bounds);
         }
 
         function createCropRect(bounds) {
             removeCropArea();
-            cropLayer = L.rectangle(bounds, { color: "#3b82f6", weight: 2, fillOpacity: 0.1, dashArray: '5, 5', interactive: true }).addTo(map);
+            cropLayer = L.rectangle(bounds, { color: "#3b82f6", weight: 2, fillOpacity: 0.1, dashArray: '5, 5' }).addTo(map);
             const corners = [bounds.getNorthWest(), bounds.getNorthEast(), bounds.getSouthWest(), bounds.getSouthEast()];
             corners.forEach((latlng, index) => {
                 const marker = L.marker(latlng, { draggable: true, icon: L.divIcon({ className: 'crop-handle', iconSize: [12, 12] }) }).addTo(map);
