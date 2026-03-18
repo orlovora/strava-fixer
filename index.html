@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Strava Crop & Fix — Очищення треків від РЕБ</title>
+    
+    <!-- Meta tags for sharing -->
+    <meta name="description" content="Безкоштовний інструмент для виправлення GPS-треків Strava: видалення стрибків та артефактів РЕБ.">
+    <meta property="og:title" content="Strava Crop & Fix">
+    <meta property="og:description" content="Видалення помилкових GPS точок за лічені секунди.">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        #map { height: 600px; width: 100%; border-radius: 12px; z-index: 1; }
+        .leaflet-container { cursor: crosshair; }
+        .crop-handle {
+            background: #3b82f6;
+            border: 2px solid white;
+            border-radius: 4px;
+            cursor: nwse-resize;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-900 font-sans">
+
+    <div class="max-w-6xl mx-auto p-4 md:p-8">
+        <header class="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div>
+                <h1 class="text-3xl font-bold text-orange-600 uppercase tracking-tight">Strava Fixer</h1>
+                <p class="text-gray-600 italic text-sm">Видалення GPS-стрибків та артефактів РЕБ</p>
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
+            <aside class="lg:col-span-1 space-y-6">
+                <!-- Завантаження -->
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                    <h2 class="font-bold mb-4 flex items-center gap-2 text-gray-700">
+                        <span class="text-blue-500">📁</span> Крок 1: Завантаження
+                    </h2>
+                    <input type="file" id="gpx-input" accept=".gpx" class="block w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer" />
+                </div>
+
+                <!-- Інструменти обрізки -->
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                    <h2 class="font-bold mb-4 flex items-center gap-2 text-gray-700">
+                        <span class="text-orange-500">✂️</span> Крок 2: Обрізка (РЕБ)
+                    </h2>
+                    <div class="space-y-3">
+                        <button id="btn-toggle-crop" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-bold py-2 rounded-lg transition flex items-center justify-center gap-2">
+                            <span>🟦</span> Виділити область
+                        </button>
+                        <button id="btn-apply-crop" class="w-full bg-orange-500 hover:bg-orange-600 text-white text-sm font-bold py-2 rounded-lg transition hidden">
+                            Обрізати все поза рамкою
+                        </button>
+                        <p class="text-[10px] text-gray-400 leading-tight">Тягніть за кути синьої рамки, щоб охопити правильний трек. Все інше буде видалено.</p>
+                    </div>
+                </div>
+
+                <!-- Експорт -->
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                    <h2 class="font-bold mb-4">Крок 3: Збереження</h2>
+                    <button id="export-gpx" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg transition disabled:opacity-50 disabled:bg-gray-200" disabled>
+                        Завантажити виправлений GPX
+                    </button>
+                </div>
+            </aside>
+
+            <main class="lg:col-span-3">
+                <div class="bg-white p-2 rounded-2xl shadow-md border border-gray-100 relative">
+                    <div id="map"></div>
+                    <div id="loading-overlay" class="absolute inset-0 bg-white/90 z-[2000] flex flex-col items-center justify-center hidden">
+                        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mb-4"></div>
+                        <p id="loading-text" class="text-orange-600 font-medium text-sm">Обробка...</p>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script>
+        let map, trackLayer, trackMarkers = [];
+        let trackPoints = []; 
+        let isCropMode = false;
+        let cropLayer = null;
+        let cropHandles = [];
+
+        function initMap() {
+            // Харківська область
+            map = L.map('map').setView([49.9935, 36.2304], 9);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+        }
+
+        document.getElementById('gpx-input').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                const xml = new DOMParser().parseFromString(ev.target.result, "text/xml");
+                const pts = Array.from(xml.querySelectorAll('trkpt'));
+                trackPoints = pts.map(pt => ({
+                    lat: parseFloat(pt.getAttribute('lat')),
+                    lng: parseFloat(pt.getAttribute('lon')),
+                    time: pt.querySelector('time')?.textContent,
+                    ele: pt.querySelector('ele')?.textContent
+                }));
+                drawTrack();
+            };
+            reader.readAsText(file);
+        });
+
+        function drawTrack() {
+            if (trackLayer) map.removeLayer(trackLayer);
+            trackMarkers.forEach(m => map.removeLayer(m));
+            trackMarkers = [];
+
+            if (trackPoints.length === 0) return;
+
+            trackLayer = L.polyline(trackPoints.map(p => [p.lat, p.lng]), { color: '#ff4400', weight: 3 }).addTo(map);
+            
+            const step = Math.max(1, Math.floor(trackPoints.length / 100));
+            trackPoints.forEach((pt, i) => {
+                if (i % step === 0 || i === trackPoints.length - 1) {
+                    const m = L.circleMarker([pt.lat, pt.lng], { 
+                        radius: 3, fillColor: '#fff', color: '#ff4400', weight: 1, fillOpacity: 0.5
+                    }).addTo(map);
+                    trackMarkers.push(m);
+                }
+            });
+
+            map.fitBounds(trackLayer.getBounds(), { padding: [40, 40] });
+            document.getElementById('export-gpx').disabled = false;
+        }
+
+        document.getElementById('btn-toggle-crop').addEventListener('click', function() {
+            isCropMode = !isCropMode;
+            if (isCropMode) {
+                this.innerHTML = "<span>❌</span> Скасувати";
+                this.classList.add('bg-red-50', 'text-red-600', 'ring-2', 'ring-red-500');
+                document.getElementById('btn-apply-crop').classList.remove('hidden');
+                initCropArea();
+            } else {
+                this.innerHTML = "<span>🟦</span> Виділити область";
+                this.classList.remove('bg-red-50', 'text-red-600', 'ring-2', 'ring-red-500');
+                document.getElementById('btn-apply-crop').classList.add('hidden');
+                removeCropArea();
+            }
+        });
+
+        function initCropArea() {
+            const bounds = map.getBounds().pad(-0.25);
+            createCropRect(bounds);
+        }
+
+        function createCropRect(bounds) {
+            removeCropArea();
+            cropLayer = L.rectangle(bounds, {
+                color: "#3b82f6", weight: 2, fillOpacity: 0.1, dashArray: '5, 5', interactive: true
+            }).addTo(map);
+
+            const corners = [
+                bounds.getNorthWest(),
+                bounds.getNorthEast(),
+                bounds.getSouthWest(),
+                bounds.getSouthEast()
+            ];
+
+            corners.forEach((latlng, index) => {
+                const marker = L.marker(latlng, {
+                    draggable: true,
+                    icon: L.divIcon({ className: 'crop-handle', iconSize: [12, 12] })
+                }).addTo(map);
+
+                marker.on('drag', () => updateCropFromMarkers(index));
+                cropHandles.push(marker);
+            });
+        }
+
+        function updateCropFromMarkers(movedIndex) {
+            const latlngs = cropHandles.map(h => h.getLatLng());
+            let newBounds;
+            const moved = latlngs[movedIndex];
+
+            if (movedIndex === 0) newBounds = L.latLngBounds(moved, latlngs[3]);
+            else if (movedIndex === 1) newBounds = L.latLngBounds(moved, latlngs[2]);
+            else if (movedIndex === 2) newBounds = L.latLngBounds(moved, latlngs[1]);
+            else newBounds = L.latLngBounds(moved, latlngs[0]);
+
+            cropLayer.setBounds(newBounds);
+            cropHandles[0].setLatLng(newBounds.getNorthWest());
+            cropHandles[1].setLatLng(newBounds.getNorthEast());
+            cropHandles[2].setLatLng(newBounds.getSouthWest());
+            cropHandles[3].setLatLng(newBounds.getSouthEast());
+        }
+
+        function removeCropArea() {
+            if (cropLayer) map.removeLayer(cropLayer);
+            cropHandles.forEach(h => map.removeLayer(h));
+            cropLayer = null;
+            cropHandles = [];
+        }
+
+        document.getElementById('btn-apply-crop').addEventListener('click', function() {
+            if (!cropLayer) return;
+            const bounds = cropLayer.getBounds();
+            const oldLen = trackPoints.length;
+            
+            trackPoints = trackPoints.filter(p => bounds.contains([p.lat, p.lng]));
+            
+            if (trackPoints.length === 0) {
+                alert("Увага: у вибраній області немає точок треку!");
+                return;
+            }
+
+            alert(`Готово: видалено ${oldLen - trackPoints.length} точок поза межами рамки.`);
+            isCropMode = false;
+            document.getElementById('btn-toggle-crop').click();
+            drawTrack();
+        });
+
+        document.getElementById('export-gpx').addEventListener('click', () => {
+            const gpxHeader = [
+                '<?xml version="1.0" encoding="UTF-8"?>',
+                '<gpx version="1.1" creator="StravaFixer" xmlns="http://www.topografix.com/GPX/1/1">',
+                '<trk><name>Fixed Activity</name><trkseg>'
+            ];
+            const gpxPoints = trackPoints.map(p => {
+                let pt = `<trkpt lat="${p.lat.toFixed(6)}" lon="${p.lng.toFixed(6)}">`;
+                if (p.ele) pt += `<ele>${p.ele}</ele>`;
+                if (p.time) pt += `<time>${p.time}</time>`;
+                pt += `</trkpt>`;
+                return pt;
+            });
+            const fullGpx = gpxHeader.concat(gpxPoints, ['</trkseg></trk></gpx>']).join('\n');
+            const blob = new Blob([fullGpx], { type: 'application/gpx+xml' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = "fixed_track.gpx";
+            a.click();
+        });
+
+        window.onload = initMap;
+    </script>
+</body>
+</html>
