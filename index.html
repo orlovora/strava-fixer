@@ -9,7 +9,7 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     
-    <!-- Используем надежный источник для парсера FIT -->
+    <!-- Бібліотека для FIT-файлів -->
     <script src="https://cdn.jsdelivr.net/npm/fit-file-parser@1.5.0/dist/fit-file-parser.min.js"></script>
 
     <style>
@@ -43,65 +43,58 @@
                 <h1 class="text-3xl font-bold text-orange-600 uppercase tracking-tight">Strava Fixer</h1>
                 <p class="text-gray-600 italic text-sm">Видалення GPS-стрибків та ручне коригування</p>
             </div>
+            <div id="status-badge" class="px-3 py-1 bg-gray-200 text-gray-600 text-xs font-bold rounded-full uppercase">Очікування файлу</div>
         </header>
 
         <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
             <aside class="lg:col-span-1 space-y-6">
-                <!-- Крок 1 -->
+                <!-- Крок 1: Завантаження -->
                 <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                    <h2 class="font-bold mb-4 flex items-center gap-2 text-gray-700">
+                    <h2 class="font-bold mb-1 flex items-center gap-2 text-gray-700">
                         <span class="text-blue-500">📁</span> Крок 1: Завантаження
                     </h2>
+                    <p class="text-xs text-gray-500 mb-4">Виберіть файл .GPX або .FIT з вашого пристрою.</p>
                     <input type="file" id="track-input" accept=".gpx,.fit" class="block w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer" />
-                    <p class="text-[10px] text-gray-400 mt-3 leading-tight">Оберіть файл .GPX або .FIT. Програма автоматично розпізнає формат.</p>
                 </div>
 
-                <!-- Крок 2 -->
+                <!-- Крок 2: Обрізка -->
                 <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                    <h2 class="font-bold mb-4 flex items-center gap-2 text-gray-700">
+                    <h2 class="font-bold mb-1 flex items-center gap-2 text-gray-700">
                         <span class="text-orange-500">✂️</span> Крок 2: Обрізка
                     </h2>
+                    <p class="text-xs text-gray-500 mb-4">Видаліть зайві ділянки на початку або в кінці, виділивши потрібну зону прямокутником.</p>
                     <div class="space-y-2">
                         <button id="btn-toggle-crop" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-bold py-2 rounded-lg transition flex items-center justify-center gap-2">
                             <span>🟦</span> Виділити область
                         </button>
                         <button id="btn-apply-crop" class="w-full bg-orange-500 hover:bg-orange-600 text-white text-sm font-bold py-2 rounded-lg transition hidden">
-                            Обрізати все поза рамкою
+                            Обрізати трек
                         </button>
                     </div>
                 </div>
 
-                <!-- Крок 3 -->
+                <!-- Крок 3: Коригування -->
                 <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                    <h2 class="font-bold mb-4 flex items-center gap-2 text-gray-700">
+                    <h2 class="font-bold mb-1 flex items-center gap-2 text-gray-700">
                         <span class="text-green-500">📍</span> Крок 3: Коригування
                     </h2>
-                    
+                    <p class="text-xs text-gray-500 mb-4">Видаляйте "викиди" GPS правою кнопкою миші або додавайте нові точки кліком по лінії.</p>
                     <button id="btn-toggle-edit" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-bold py-2 rounded-lg transition flex items-center justify-center gap-2 mb-3">
-                        <span>✏️</span> Редагувати трек
+                        <span>✏️</span> Редагувати точки
                     </button>
-
-                    <div class="flex gap-2 mb-4">
-                        <button id="btn-undo" title="Відмінити (Ctrl+Z)" disabled class="flex-1 bg-white hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed text-gray-700 py-2 rounded-lg transition flex items-center justify-center border border-gray-200 shadow-sm">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5v0a5.5 5.5 0 0 1-5.5 5.5H11"/></svg>
-                        </button>
-                        <button id="btn-redo" title="Повернути (Ctrl+Y)" disabled class="flex-1 bg-white hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed text-gray-700 py-2 rounded-lg transition flex items-center justify-center border border-gray-200 shadow-sm">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5A5.5 5.5 0 0 0 4 14.5v0A5.5 5.5 0 0 0 9.5 20H13"/></svg>
-                        </button>
-                    </div>
-
-                    <div class="text-[11px] text-gray-500 mt-2 space-y-2 leading-relaxed bg-blue-50/50 p-3 rounded-xl border border-blue-100">
-                        <p>• <b>Додавання:</b> Клікніть на лінію треку, щоб додати нову точку.</p>
-                        <p>• <b>Видалення:</b> Права кнопка миші на помаранчевій точці видаляє її.</p>
+                    <div class="flex gap-2">
+                        <button id="btn-undo" title="Назад (Ctrl+Z)" disabled class="flex-1 bg-white hover:bg-gray-50 disabled:opacity-30 text-gray-700 py-2 rounded-lg border border-gray-200 transition flex justify-center">↩️</button>
+                        <button id="btn-redo" title="Вперед (Ctrl+Y)" disabled class="flex-1 bg-white hover:bg-gray-50 disabled:opacity-30 text-gray-700 py-2 rounded-lg border border-gray-200 transition flex justify-center">↪️</button>
                     </div>
                 </div>
 
-                <!-- Крок 4 -->
+                <!-- Крок 4: Збереження -->
                 <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                    <h2 class="font-bold mb-4 flex items-center gap-2 text-gray-700">
+                    <h2 class="font-bold mb-1 flex items-center gap-2 text-gray-700">
                         <span class="text-purple-500">💾</span> Крок 4: Збереження
                     </h2>
-                    <button id="export-btn" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg transition disabled:opacity-50 disabled:bg-gray-200" disabled>
+                    <p class="text-xs text-gray-500 mb-4">Збережіть виправлений трек у форматі GPX для подальшого завантаження в Strava.</p>
+                    <button id="export-btn" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg transition disabled:opacity-50" disabled>
                         Завантажити GPX
                     </button>
                 </div>
@@ -112,7 +105,7 @@
                     <div id="map"></div>
                     <div id="loading-overlay" class="absolute inset-0 bg-white/90 z-[2000] flex flex-col items-center justify-center hidden">
                         <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mb-4"></div>
-                        <p class="text-orange-600 font-medium text-sm">Обробка...</p>
+                        <p class="text-orange-600 font-medium text-sm">Обробка треку...</p>
                     </div>
                 </div>
             </main>
@@ -137,11 +130,11 @@
             }).addTo(map);
 
             map.on('click', (e) => { if (isEditMode) insertPointAt(e.latlng); });
+            
+            // Shortcuts
             window.addEventListener('keydown', (e) => {
-                if (e.ctrlKey || e.metaKey) {
-                    if (e.key === 'z') { e.preventDefault(); undoAction(); }
-                    if (e.key === 'y') { e.preventDefault(); redoAction(); }
-                }
+                if ((e.ctrlKey || e.metaKey) && e.key === 'z') { e.preventDefault(); undoAction(); }
+                if ((e.ctrlKey || e.metaKey) && e.key === 'y') { e.preventDefault(); redoAction(); }
             });
         }
 
@@ -180,6 +173,8 @@
             const file = e.target.files[0];
             if (!file) return;
             document.getElementById('loading-overlay').classList.remove('hidden');
+            document.getElementById('status-badge').innerText = "Обробка...";
+            
             try {
                 if (file.name.toLowerCase().endsWith('.fit')) {
                     await parseFitFile(file);
@@ -189,9 +184,13 @@
                 historyStack = []; redoStack = [];
                 updateUndoRedoButtons();
                 drawTrack(true);
+                document.getElementById('status-badge').innerText = "Готово: " + trackPoints.length + " точок";
+                document.getElementById('status-badge').className = "px-3 py-1 bg-green-100 text-green-700 text-xs font-bold rounded-full uppercase";
             } catch (err) {
                 console.error("Critical Error:", err);
-                alert("Помилка при завантаженні: " + err.message);
+                alert("Помилка: " + err.message);
+                document.getElementById('status-badge').innerText = "Помилка";
+                document.getElementById('status-badge').className = "px-3 py-1 bg-red-100 text-red-700 text-xs font-bold rounded-full uppercase";
             } finally {
                 document.getElementById('loading-overlay').classList.add('hidden');
             }
@@ -214,26 +213,23 @@
 
         async function parseFitFile(file) {
             const buffer = await file.arrayBuffer();
-            
-            // Прямая попытка достать конструктор
-            let Parser = window.FitParser;
-            if (Parser && Parser.default) Parser = Parser.default;
+            let Constructor = null;
+            if (typeof window.FitParser === 'function') Constructor = window.FitParser;
+            else if (window.FitParser && typeof window.FitParser.default === 'function') Constructor = window.FitParser.default;
+            else if (typeof FitParser !== 'undefined') Constructor = FitParser;
 
-            if (typeof Parser !== 'function') {
-                throw new Error("Не вдалося ініціалізувати обробник FIT-файлів. Спробуйте інший браузер.");
-            }
+            if (!Constructor) throw new Error("FitParser не знайдено.");
 
-            const fitParser = new Parser({ force: true, mode: 'both' });
+            const fitParser = new Constructor({ force: true, mode: 'both' });
 
             return new Promise((resolve, reject) => {
                 fitParser.parse(buffer, (error, data) => {
-                    if (error) return reject(new Error("Файл пошкоджено: " + error));
+                    if (error) return reject(new Error("Помилка FIT: " + error));
                     
                     const scToDeg = (sc) => sc * (180 / Math.pow(2, 31));
                     let records = [];
 
-                    // Извлекаем записи из всех возможных уровней вложенности FIT
-                    if (data.records) {
+                    if (data.records && data.records.length > 0) {
                         records = data.records;
                     } else if (data.activity && data.activity.sessions) {
                         data.activity.sessions.forEach(s => {
@@ -255,11 +251,8 @@
                             pow: r.power
                         }));
 
-                    if (trackPoints.length === 0) {
-                        reject(new Error("GPS-дані не знайдені. Можливо, це Indoor-тренування без GPS."));
-                    } else {
-                        resolve();
-                    }
+                    if (trackPoints.length === 0) reject(new Error("Точок GPS не знайдено."));
+                    else resolve();
                 });
             });
         }
@@ -281,11 +274,11 @@
             isEditMode = !isEditMode;
             if (isEditMode) {
                 this.innerHTML = "<span>✅</span> Завершити";
-                this.classList.add('bg-green-50', 'text-green-600', 'ring-2', 'ring-green-500');
+                this.classList.replace('bg-gray-100', 'bg-green-100');
                 renderEditMarkers();
             } else {
-                this.innerHTML = "<span>✏️</span> Редагувати трек";
-                this.classList.remove('bg-green-50', 'text-green-600', 'ring-2', 'ring-green-500');
+                this.innerHTML = "<span>✏️</span> Редагувати точки";
+                this.classList.replace('bg-green-100', 'bg-gray-100');
                 clearEditMarkers();
             }
         });
@@ -298,6 +291,7 @@
                 const marker = L.marker([pt.lat, pt.lng], {
                     icon: L.divIcon({ className: 'edit-marker', iconSize: [10, 10] })
                 }).addTo(map);
+                
                 marker.on('contextmenu', (e) => {
                     L.DomEvent.stopPropagation(e);
                     saveToHistory();
@@ -322,13 +316,9 @@
             for (let i = 0; i < trackPoints.length - 1; i++) {
                 const p1 = L.latLng(trackPoints[i].lat, trackPoints[i].lng);
                 const p2 = L.latLng(trackPoints[i+1].lat, trackPoints[i+1].lng);
-                const d1 = latlng.distanceTo(p1);
-                const d2 = latlng.distanceTo(p2);
-                const segmentLength = p1.distanceTo(p2);
-                const diff = (d1 + d2) - segmentLength;
-                if (diff < minDistance) { minDistance = diff; insertIndex = i + 1; }
+                const d = latlng.distanceTo(p1) + latlng.distanceTo(p2) - p1.distanceTo(p2);
+                if (d < minDistance) { minDistance = d; insertIndex = i + 1; }
             }
-
             const ref = trackPoints[insertIndex - 1];
             trackPoints.splice(insertIndex, 0, { ...ref, lat: latlng.lat, lng: latlng.lng });
             drawTrack(false);
@@ -339,21 +329,17 @@
             isCropMode = !isCropMode;
             if (isCropMode) {
                 this.innerHTML = "<span>❌</span> Скасувати";
-                this.classList.add('bg-red-50', 'text-red-600', 'ring-2', 'ring-red-500');
+                this.classList.replace('bg-gray-100', 'bg-red-100');
                 document.getElementById('btn-apply-crop').classList.remove('hidden');
-                initCropArea();
+                const bounds = map.getBounds().pad(-0.2);
+                createCropRect(bounds);
             } else {
                 this.innerHTML = "<span>🟦</span> Виділити область";
-                this.classList.remove('bg-red-50', 'text-red-600', 'ring-2', 'ring-red-500');
+                this.classList.replace('bg-red-100', 'bg-gray-100');
                 document.getElementById('btn-apply-crop').classList.add('hidden');
                 removeCropArea();
             }
         });
-
-        function initCropArea() {
-            const bounds = map.getBounds().pad(-0.2);
-            createCropRect(bounds);
-        }
 
         function createCropRect(bounds) {
             removeCropArea();
@@ -394,16 +380,11 @@
         });
 
         document.getElementById('export-btn').addEventListener('click', () => {
-            const header = [
-                '<?xml version="1.0" encoding="UTF-8"?>',
-                '<gpx version="1.1" creator="StravaFixer" xmlns="http://www.topografix.com/GPX/1/1" xmlns:gpxtpx="http://www.garmin.com/xmlschemas/TrackPointExtension/v1">',
-                '<trk><name>Fixed Activity</name><trkseg>'
-            ].join('\n');
+            const header = '<?xml version="1.0" encoding="UTF-8"?><gpx version="1.1" creator="StravaFixer" xmlns="http://www.topografix.com/GPX/1/1" xmlns:gpxtpx="http://www.garmin.com/xmlschemas/TrackPointExtension/v1"><trk><name>Fixed Activity</name><trkseg>';
             const body = trackPoints.map(p => {
                 let s = `<trkpt lat="${p.lat.toFixed(6)}" lon="${p.lng.toFixed(6)}">`;
-                if (p.ele) s += `<ele>${p.ele}</ele>`;
+                if (p.ele !== undefined) s += `<ele>${p.ele}</ele>`;
                 if (p.time) s += `<time>${p.time}</time>`;
-                if (p.pow) s += `<power>${p.pow}</power>`;
                 if (p.hr || p.cad) {
                     s += `<extensions><gpxtpx:TrackPointExtension>`;
                     if (p.hr) s += `<gpxtpx:hr>${p.hr}</gpxtpx:hr>`;
@@ -412,8 +393,8 @@
                 }
                 s += `</trkpt>`;
                 return s;
-            }).join('\n');
-            const fullGpx = header + '\n' + body + '\n</trkseg></trk></gpx>';
+            }).join('');
+            const fullGpx = header + body + '</trkseg></trk></gpx>';
             const blob = new Blob([fullGpx], { type: 'application/gpx+xml' });
             const a = document.createElement('a');
             a.href = URL.createObjectURL(blob);
