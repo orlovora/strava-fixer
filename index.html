@@ -221,6 +221,10 @@
                 };
             });
 
+            // Кнопки скасування / повтору
+            document.getElementById('btn-undo').onclick = undoAction;
+            document.getElementById('btn-redo').onclick = redoAction;
+
             window.addEventListener('keydown', (e) => {
                 if ((e.ctrlKey || e.metaKey) && e.key === 'z') { e.preventDefault(); undoAction(); }
                 if ((e.ctrlKey || e.metaKey) && e.key === 'y') { e.preventDefault(); redoAction(); }
@@ -448,8 +452,8 @@
         }
 
         function updateUndoRedoButtons() {
-            document.getElementById('btn-undo').disabled = historyStack.length === 0;
-            document.getElementById('btn-redo').disabled = redoStack.length === 0;
+            document.getElementById('btn-undo').disabled = (historyStack.length === 0);
+            document.getElementById('btn-redo').disabled = (redoStack.length === 0);
         }
 
         document.getElementById('track-input').addEventListener('change', async (e) => {
@@ -469,22 +473,26 @@
             }
         });
 
-        document.getElementById('btn-toggle-edit').addEventListener('click', function() {
+        document.getElementById('btn-toggle-edit').onclick = function() {
+            if (trackPoints.length === 0) return;
             if (isCropMode) document.getElementById('btn-toggle-crop').click();
             isEditMode = !isEditMode;
             this.innerHTML = isEditMode ? "<span>✅</span> Завершити" : "<span>✏️</span> Редагувати";
             this.classList.toggle('bg-green-100', isEditMode);
+            this.classList.toggle('text-green-700', isEditMode);
             if (isEditMode) renderEditMarkers(); else clearEditMarkers();
-        });
+        };
 
         function renderEditMarkers() {
             clearEditMarkers();
+            // Показуємо кожну N-ту точку для продуктивності
             const skip = Math.max(1, Math.floor(trackPoints.length / 300)); 
             trackPoints.forEach((pt, index) => {
                 if (index % skip !== 0 && index !== trackPoints.length - 1 && index !== 0) return;
                 const marker = L.marker([pt.lat, pt.lng], {
                     icon: L.divIcon({ className: 'edit-marker', iconSize: [10, 10] })
                 }).addTo(map);
+                
                 marker.on('contextmenu', (e) => {
                     L.DomEvent.stopPropagation(e);
                     saveToHistory();
@@ -512,7 +520,8 @@
             drawTrack(false);
         }
 
-        document.getElementById('btn-toggle-crop').addEventListener('click', function() {
+        document.getElementById('btn-toggle-crop').onclick = function() {
+            if (trackPoints.length === 0) return;
             if (isEditMode) document.getElementById('btn-toggle-edit').click();
             isCropMode = !isCropMode;
             this.innerHTML = isCropMode ? "<span>❌</span> Скасувати" : "<span>🟦</span> Виділити область";
@@ -524,10 +533,17 @@
                     const m = L.marker(ll, { draggable: true, icon: L.divIcon({ className: 'crop-handle', iconSize: [12, 12] }) }).addTo(map);
                     m.on('drag', () => {
                         const ls = cropHandles.map(h => h.getLatLng());
-                        let nb = (i===0)?L.latLngBounds(ls[0],ls[3]):(i===1)?L.latLngBounds(ls[1],ls[2]):(i===2)?L.latLngBounds(ls[2],ls[1]):L.latLngBounds(ls[3],ls[0]);
+                        let nb;
+                        if (i === 0) nb = L.latLngBounds(m.getLatLng(), ls[3]);
+                        else if (i === 1) nb = L.latLngBounds(m.getLatLng(), ls[2]);
+                        else if (i === 2) nb = L.latLngBounds(m.getLatLng(), ls[1]);
+                        else nb = L.latLngBounds(m.getLatLng(), ls[0]);
+                        
                         cropLayer.setBounds(nb);
-                        cropHandles[0].setLatLng(nb.getNorthWest()); cropHandles[1].setLatLng(nb.getNorthEast());
-                        cropHandles[2].setLatLng(nb.getSouthWest()); cropHandles[3].setLatLng(nb.getSouthEast());
+                        cropHandles[0].setLatLng(nb.getNorthWest()); 
+                        cropHandles[1].setLatLng(nb.getNorthEast());
+                        cropHandles[2].setLatLng(nb.getSouthWest()); 
+                        cropHandles[3].setLatLng(nb.getSouthEast());
                     });
                     cropHandles.push(m);
                 });
@@ -536,18 +552,19 @@
                 cropHandles.forEach(h => map.removeLayer(h));
                 cropLayer = null; cropHandles = [];
             }
-        });
+        };
 
-        document.getElementById('btn-apply-crop').addEventListener('click', function() {
+        document.getElementById('btn-apply-crop').onclick = function() {
             if (!cropLayer) return;
             saveToHistory();
             const b = cropLayer.getBounds();
             trackPoints = trackPoints.filter(p => b.contains([p.lat, p.lng]));
             document.getElementById('btn-toggle-crop').click();
             drawTrack(false);
-        });
+        };
 
-        document.getElementById('export-btn').addEventListener('click', () => {
+        document.getElementById('export-btn').onclick = () => {
+            if (trackPoints.length === 0) return;
             const header = '<?xml version="1.0" encoding="UTF-8"?><gpx version="1.1" creator="StravaFixer" xmlns="http://www.topografix.com/GPX/1/1" xmlns:gpxtpx="http://www.garmin.com/xmlschemas/TrackPointExtension/v1"><trk><name>Fixed Activity</name><trkseg>';
             const body = trackPoints.map(p => {
                 let s = `<trkpt lat="${p.lat.toFixed(6)}" lon="${p.lng.toFixed(6)}">`;
@@ -568,7 +585,7 @@
             a.href = URL.createObjectURL(blob);
             a.download = "fixed_activity.gpx";
             a.click();
-        });
+        };
 
         window.onload = initMap;
     </script>
