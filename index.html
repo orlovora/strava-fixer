@@ -6,13 +6,16 @@
     <title>Strava Crop & Fix — Очищення треків від РЕБ</title>
     
     <!-- Meta tags for sharing -->
-    <meta name="description" content="Безкоштовний інструмент для виправлення GPS-треків Strava: видалення стрибків та артефактів РЕБ.">
+    <meta name="description" content="Безкоштовний інструмент для виправлення GPS-треків Strava: видалення стрибків та артефактів РЕБ. Підтримка GPX та FIT.">
     <meta property="og:title" content="Strava Crop & Fix">
-    <meta property="og:description" content="Видалення помилкових GPS точок за лічені секунди.">
     
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <!-- Скрипт для роботи з FIT файлами -->
+    <script src="https://cdn.jsdelivr.net/npm/fit-file-parser@1.5.0/dist/fit-file-parser.min.js"></script>
+
     <style>
         #map { height: 600px; width: 100%; border-radius: 12px; z-index: 1; }
         .leaflet-container { cursor: crosshair; }
@@ -30,7 +33,7 @@
         <header class="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div>
                 <h1 class="text-3xl font-bold text-orange-600 uppercase tracking-tight">Strava Fixer</h1>
-                <p class="text-gray-600 italic text-sm">Видалення GPS-стрибків та артефактів РЕБ</p>
+                <p class="text-gray-600 italic text-sm">Видалення GPS-стрибків та артефактів РЕБ (GPX & FIT)</p>
             </div>
         </header>
 
@@ -41,7 +44,8 @@
                     <h2 class="font-bold mb-4 flex items-center gap-2 text-gray-700">
                         <span class="text-blue-500">📁</span> Крок 1: Завантаження
                     </h2>
-                    <input type="file" id="gpx-input" accept=".gpx" class="block w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer" />
+                    <p class="text-[11px] text-gray-500 mb-2">Підтримуються файли <b>.gpx</b> та <b>.fit</b> (з датчиками)</p>
+                    <input type="file" id="track-input" accept=".gpx,.fit" class="block w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer" />
                 </div>
 
                 <!-- Інструменти обрізки -->
@@ -56,16 +60,17 @@
                         <button id="btn-apply-crop" class="w-full bg-orange-500 hover:bg-orange-600 text-white text-sm font-bold py-2 rounded-lg transition hidden">
                             Обрізати все поза рамкою
                         </button>
-                        <p class="text-[10px] text-gray-400 leading-tight">Тягніть за кути синьої рамки, щоб охопити правильний трек. Все інше буде видалено.</p>
+                        <p class="text-[10px] text-gray-400 leading-tight">Рамка залишає тільки правильну частину шляху. Дані пульсу та каденсу зберігаються.</p>
                     </div>
                 </div>
 
                 <!-- Експорт -->
                 <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
                     <h2 class="font-bold mb-4">Крок 3: Збереження</h2>
-                    <button id="export-gpx" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg transition disabled:opacity-50 disabled:bg-gray-200" disabled>
-                        Завантажити виправлений GPX
+                    <button id="export-btn" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg transition disabled:opacity-50 disabled:bg-gray-200" disabled>
+                        Завантажити виправлений трек
                     </button>
+                    <p class="text-[10px] text-center text-gray-400 mt-2">Експортується як GPX з підтримкою датчиків для Strava</p>
                 </div>
             </aside>
 
@@ -74,7 +79,7 @@
                     <div id="map"></div>
                     <div id="loading-overlay" class="absolute inset-0 bg-white/90 z-[2000] flex flex-col items-center justify-center hidden">
                         <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mb-4"></div>
-                        <p id="loading-text" class="text-orange-600 font-medium text-sm">Обробка...</p>
+                        <p id="loading-text" class="text-orange-600 font-medium text-sm">Обробка файлу...</p>
                     </div>
                 </div>
             </main>
@@ -89,30 +94,86 @@
         let cropHandles = [];
 
         function initMap() {
-            // Харківська область
             map = L.map('map').setView([49.9935, 36.2304], 9);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '© OpenStreetMap contributors'
             }).addTo(map);
         }
 
-        document.getElementById('gpx-input').addEventListener('change', (e) => {
+        document.getElementById('track-input').addEventListener('change', async (e) => {
             const file = e.target.files[0];
             if (!file) return;
-            const reader = new FileReader();
-            reader.onload = (ev) => {
-                const xml = new DOMParser().parseFromString(ev.target.result, "text/xml");
-                const pts = Array.from(xml.querySelectorAll('trkpt'));
-                trackPoints = pts.map(pt => ({
-                    lat: parseFloat(pt.getAttribute('lat')),
-                    lng: parseFloat(pt.getAttribute('lon')),
-                    time: pt.querySelector('time')?.textContent,
-                    ele: pt.querySelector('ele')?.textContent
-                }));
+
+            const loading = document.getElementById('loading-overlay');
+            loading.classList.remove('hidden');
+
+            try {
+                if (file.name.toLowerCase().endsWith('.fit')) {
+                    await parseFitFile(file);
+                } else {
+                    await parseGpxFile(file);
+                }
                 drawTrack();
-            };
-            reader.readAsText(file);
+            } catch (err) {
+                console.error(err);
+                alert("Помилка при зчитуванні файлу. Перевірте формат.");
+            } finally {
+                loading.classList.add('hidden');
+            }
         });
+
+        // Парсинг GPX
+        async function parseGpxFile(file) {
+            const text = await file.text();
+            const xml = new DOMParser().parseFromString(text, "text/xml");
+            const pts = Array.from(xml.querySelectorAll('trkpt'));
+            trackPoints = pts.map(pt => ({
+                lat: parseFloat(pt.getAttribute('lat')),
+                lng: parseFloat(pt.getAttribute('lon')),
+                time: pt.querySelector('time')?.textContent,
+                ele: pt.querySelector('ele')?.textContent,
+                // Спроба отримати дані датчиків з GPX розширень
+                hr: pt.getElementsByTagNameNS('*', 'hr')[0]?.textContent || pt.querySelector('hr')?.textContent,
+                cad: pt.getElementsByTagNameNS('*', 'cad')[0]?.textContent || pt.querySelector('cad')?.textContent,
+                pow: pt.getElementsByTagNameNS('*', 'power')[0]?.textContent || pt.querySelector('power')?.textContent
+            }));
+        }
+
+        // Парсинг FIT (бінарний)
+        async function parseFitFile(file) {
+            const buffer = await file.arrayBuffer();
+            const FitParser = window.FitParser; // Бібліотека з cdn
+            const fitParser = new FitParser({
+                force: true,
+                speedUnit: 'km/h',
+                lengthUnit: 'm',
+                temperatureUnit: 'celsius',
+                elapsedRecordField: true,
+                mode: 'both'
+            });
+
+            return new Promise((resolve, reject) => {
+                fitParser.parse(buffer, (error, data) => {
+                    if (error) reject(error);
+                    else {
+                        // Витягуємо записи (records)
+                        const records = data.records || [];
+                        trackPoints = records
+                            .filter(r => r.position_lat && r.position_long)
+                            .map(r => ({
+                                lat: r.position_lat,
+                                lng: r.position_long,
+                                time: r.timestamp ? new Date(r.timestamp).toISOString() : null,
+                                ele: r.altitude,
+                                hr: r.heart_rate,
+                                cad: r.cadence,
+                                pow: r.power
+                            }));
+                        resolve();
+                    }
+                });
+            });
+        }
 
         function drawTrack() {
             if (trackLayer) map.removeLayer(trackLayer);
@@ -134,9 +195,10 @@
             });
 
             map.fitBounds(trackLayer.getBounds(), { padding: [40, 40] });
-            document.getElementById('export-gpx').disabled = false;
+            document.getElementById('export-btn').disabled = false;
         }
 
+        // Логіка Crop (без змін)
         document.getElementById('btn-toggle-crop').addEventListener('click', function() {
             isCropMode = !isCropMode;
             if (isCropMode) {
@@ -159,23 +221,10 @@
 
         function createCropRect(bounds) {
             removeCropArea();
-            cropLayer = L.rectangle(bounds, {
-                color: "#3b82f6", weight: 2, fillOpacity: 0.1, dashArray: '5, 5', interactive: true
-            }).addTo(map);
-
-            const corners = [
-                bounds.getNorthWest(),
-                bounds.getNorthEast(),
-                bounds.getSouthWest(),
-                bounds.getSouthEast()
-            ];
-
+            cropLayer = L.rectangle(bounds, { color: "#3b82f6", weight: 2, fillOpacity: 0.1, dashArray: '5, 5', interactive: true }).addTo(map);
+            const corners = [bounds.getNorthWest(), bounds.getNorthEast(), bounds.getSouthWest(), bounds.getSouthEast()];
             corners.forEach((latlng, index) => {
-                const marker = L.marker(latlng, {
-                    draggable: true,
-                    icon: L.divIcon({ className: 'crop-handle', iconSize: [12, 12] })
-                }).addTo(map);
-
+                const marker = L.marker(latlng, { draggable: true, icon: L.divIcon({ className: 'crop-handle', iconSize: [12, 12] }) }).addTo(map);
                 marker.on('drag', () => updateCropFromMarkers(index));
                 cropHandles.push(marker);
             });
@@ -184,12 +233,10 @@
         function updateCropFromMarkers(movedIndex) {
             const latlngs = cropHandles.map(h => h.getLatLng());
             let newBounds;
-            const moved = latlngs[movedIndex];
-
-            if (movedIndex === 0) newBounds = L.latLngBounds(moved, latlngs[3]);
-            else if (movedIndex === 1) newBounds = L.latLngBounds(moved, latlngs[2]);
-            else if (movedIndex === 2) newBounds = L.latLngBounds(moved, latlngs[1]);
-            else newBounds = L.latLngBounds(moved, latlngs[0]);
+            if (movedIndex === 0) newBounds = L.latLngBounds(latlngs[0], latlngs[3]);
+            else if (movedIndex === 1) newBounds = L.latLngBounds(latlngs[1], latlngs[2]);
+            else if (movedIndex === 2) newBounds = L.latLngBounds(latlngs[2], latlngs[1]);
+            else newBounds = L.latLngBounds(latlngs[3], latlngs[0]);
 
             cropLayer.setBounds(newBounds);
             cropHandles[0].setLatLng(newBounds.getNorthWest());
@@ -201,47 +248,53 @@
         function removeCropArea() {
             if (cropLayer) map.removeLayer(cropLayer);
             cropHandles.forEach(h => map.removeLayer(h));
-            cropLayer = null;
-            cropHandles = [];
+            cropLayer = null; cropHandles = [];
         }
 
         document.getElementById('btn-apply-crop').addEventListener('click', function() {
             if (!cropLayer) return;
             const bounds = cropLayer.getBounds();
             const oldLen = trackPoints.length;
-            
             trackPoints = trackPoints.filter(p => bounds.contains([p.lat, p.lng]));
-            
-            if (trackPoints.length === 0) {
-                alert("Увага: у вибраній області немає точок треку!");
-                return;
-            }
-
-            alert(`Готово: видалено ${oldLen - trackPoints.length} точок поза межами рамки.`);
+            if (trackPoints.length === 0) { alert("Увага: у вибраній області немає точок!"); return; }
+            alert(`Видалено ${oldLen - trackPoints.length} точок.`);
             isCropMode = false;
             document.getElementById('btn-toggle-crop').click();
             drawTrack();
         });
 
-        document.getElementById('export-gpx').addEventListener('click', () => {
+        // Експорт у GPX з розширеннями для датчиків
+        document.getElementById('export-btn').addEventListener('click', () => {
             const gpxHeader = [
                 '<?xml version="1.0" encoding="UTF-8"?>',
-                '<gpx version="1.1" creator="StravaFixer" xmlns="http://www.topografix.com/GPX/1/1">',
+                '<gpx version="1.1" creator="StravaFixer" xmlns="http://www.topografix.com/GPX/1/1" xmlns:gpxtpx="http://www.garmin.com/xmlschemas/TrackPointExtension/v1">',
                 '<trk><name>Fixed Activity</name><trkseg>'
             ];
+            
             const gpxPoints = trackPoints.map(p => {
                 let pt = `<trkpt lat="${p.lat.toFixed(6)}" lon="${p.lng.toFixed(6)}">`;
                 if (p.ele) pt += `<ele>${p.ele}</ele>`;
                 if (p.time) pt += `<time>${p.time}</time>`;
+                if (p.pow) pt += `<power>${p.pow}</power>`;
+                
+                // Розширення для пульсу та каденсу (Strava їх читає тут)
+                if (p.hr || p.cad) {
+                    pt += `<extensions><gpxtpx:TrackPointExtension>`;
+                    if (p.hr) pt += `<gpxtpx:hr>${p.hr}</gpxtpx:hr>`;
+                    if (p.cad) pt += `<gpxtpx:cad>${p.cad}</gpxtpx:cad>`;
+                    pt += `</gpxtpx:TrackPointExtension></extensions>`;
+                }
+                
                 pt += `</trkpt>`;
                 return pt;
             });
+            
             const fullGpx = gpxHeader.concat(gpxPoints, ['</trkseg></trk></gpx>']).join('\n');
             const blob = new Blob([fullGpx], { type: 'application/gpx+xml' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = "fixed_track.gpx";
+            a.download = "fixed_activity.gpx";
             a.click();
         });
 
