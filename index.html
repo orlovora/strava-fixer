@@ -38,6 +38,30 @@
             height: 250px;
             width: 100%;
         }
+        .step-card {
+            background: white;
+            padding: 1.25rem;
+            border-radius: 1rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            border: 1px solid #f3f4f6;
+        }
+        .step-title {
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: #374151;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .step-desc {
+            font-size: 0.75rem;
+            color: #6b7280;
+            margin-bottom: 0.75rem;
+            font-style: italic;
+            line-height: 1.25;
+        }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-900 font-sans">
@@ -45,63 +69,64 @@
     <div class="max-w-6xl mx-auto p-4 md:p-8">
         <header class="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div>
-                <h1 class="text-3xl font-bold text-orange-600 uppercase tracking-tight">Strava Fixer</h1>
-                <p class="text-gray-600 italic text-sm">Видалення GPS-стрибків та аналіз пульсу/висоти</p>
+                <h1 class="text-3xl font-bold text-orange-600 uppercase tracking-tight">Strava Fixer Pro</h1>
+                <p class="text-gray-600 italic text-sm">Видалення стрибків GPS та аналіз датчиків</p>
             </div>
             <div id="status-badge" class="px-3 py-1 bg-gray-200 text-gray-600 text-xs font-bold rounded-full uppercase">Очікування файлу</div>
         </header>
 
-        <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
             <!-- Ліва панель: Керування -->
-            <aside class="lg:col-span-1 space-y-6">
+            <aside class="lg:col-span-1 space-y-4">
+                
                 <!-- Крок 1 -->
-                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                    <h2 class="font-bold mb-1 flex items-center gap-2 text-gray-700">
-                        <span class="text-blue-500">📁</span> Крок 1: Завантаження
+                <div class="step-card">
+                    <h2 class="step-title">
+                        <span class="text-blue-500">01</span> Завантаження
                     </h2>
-                    <p class="text-xs text-gray-500 mb-4 italic">Виберіть .GPX або .FIT файл. Дані про пульс та каденс (якщо є) будуть збережені.</p>
-                    <input type="file" id="track-input" accept=".gpx,.fit" class="block w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer" />
+                    <p class="step-desc">Оберіть файл .gpx або .fit для початку роботи</p>
+                    <input type="file" id="track-input" accept=".gpx,.fit" class="block w-full text-[10px] text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-full file:border-0 file:text-[10px] file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer" />
                 </div>
 
                 <!-- Крок 2 -->
-                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                    <h2 class="font-bold mb-1 flex items-center gap-2 text-gray-700">
-                        <span class="text-orange-500">✂️</span> Крок 2: Обрізка
+                <div class="step-card">
+                    <h2 class="step-title">
+                        <span class="text-orange-500">02</span> Обрізка треку
                     </h2>
-                    <p class="text-xs text-gray-500 mb-4 italic">Використовуйте прямокутник, щоб залишити тільки потрібну частину треку.</p>
+                    <p class="step-desc">Видаліть зайві ділянки на початку або в кінці</p>
                     <div class="space-y-2">
-                        <button id="btn-toggle-crop" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-bold py-2 rounded-lg transition flex items-center justify-center gap-2">
+                        <button id="btn-toggle-crop" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold py-2 rounded-lg transition flex items-center justify-center gap-2">
                             <span>🟦</span> Виділити область
                         </button>
-                        <button id="btn-apply-crop" class="w-full bg-orange-500 hover:bg-orange-600 text-white text-sm font-bold py-2 rounded-lg transition hidden">
-                            Обрізати трек
+                        <button id="btn-apply-crop" class="w-full bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold py-2 rounded-lg transition hidden">
+                            Застосувати обрізку
                         </button>
                     </div>
                 </div>
 
                 <!-- Крок 3 -->
-                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                    <h2 class="font-bold mb-1 flex items-center gap-2 text-gray-700">
-                        <span class="text-green-500">📍</span> Крок 3: Коригування
+                <div class="step-card">
+                    <h2 class="step-title">
+                        <span class="text-green-500">03</span> Коригування
                     </h2>
-                    <p class="text-xs text-gray-500 mb-4 italic">Видаляйте помилкові точки правою кнопкою миші (ПКМ) або додавайте нові кліком по лінії.</p>
-                    <button id="btn-toggle-edit" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-bold py-2 rounded-lg transition flex items-center justify-center gap-2 mb-3">
+                    <p class="step-desc">Видаляйте GPS-стрибки правою кнопкою миші</p>
+                    <button id="btn-toggle-edit" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold py-2 rounded-lg transition flex items-center justify-center gap-2 mb-3">
                         <span>✏️</span> Редагувати точки
                     </button>
                     <div class="flex gap-2">
-                        <button id="btn-undo" title="Назад (Ctrl+Z)" disabled class="flex-1 bg-white hover:bg-gray-50 disabled:opacity-30 text-gray-700 py-2 rounded-lg border border-gray-200 transition flex justify-center">↩️</button>
-                        <button id="btn-redo" title="Вперед (Ctrl+Y)" disabled class="flex-1 bg-white hover:bg-gray-50 disabled:opacity-30 text-gray-700 py-2 rounded-lg border border-gray-200 transition flex justify-center">↪️</button>
+                        <button id="btn-undo" title="Назад (Ctrl+Z)" disabled class="flex-1 bg-white hover:bg-gray-50 disabled:opacity-30 text-gray-700 py-2 rounded-lg border border-gray-200 transition flex justify-center text-sm">↩️</button>
+                        <button id="btn-redo" title="Вперед (Ctrl+Y)" disabled class="flex-1 bg-white hover:bg-gray-50 disabled:opacity-30 text-gray-700 py-2 rounded-lg border border-gray-200 transition flex justify-center text-sm">↪️</button>
                     </div>
                 </div>
 
                 <!-- Крок 4 -->
-                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                    <h2 class="font-bold mb-1 flex items-center gap-2 text-gray-700">
-                        <span class="text-purple-500">💾</span> Крок 4: Збереження
+                <div class="step-card">
+                    <h2 class="step-title">
+                        <span class="text-purple-500">04</span> Експорт
                     </h2>
-                    <p class="text-xs text-gray-500 mb-4 italic">Завантажте готовий .GPX файл для імпорту в Strava.</p>
-                    <button id="export-btn" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg transition disabled:opacity-50" disabled>
-                        Завантажити GPX
+                    <p class="step-desc">Збережіть чистий GPX для Strava/TrainingPeaks</p>
+                    <button id="export-btn" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg transition disabled:opacity-50 text-sm" disabled>
+                        Зберегти GPX
                     </button>
                 </div>
             </aside>
@@ -113,39 +138,45 @@
                     <div id="map"></div>
                     <div id="loading-overlay" class="absolute inset-0 bg-white/90 z-[2000] flex flex-col items-center justify-center hidden">
                         <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mb-4"></div>
-                        <p class="text-orange-600 font-medium text-sm">Обробка даних...</p>
+                        <p class="text-orange-600 font-medium text-sm">Обробка треку...</p>
                     </div>
                 </div>
 
-                <!-- Статистика та Графік ПІД КАРТОЮ -->
+                <!-- Статистика та Графік -->
                 <div id="data-visualization" class="space-y-4 hidden">
                     <div id="stats-panel" class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                        <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
-                            <div class="border-l-4 border-orange-500 pl-4">
-                                <p class="text-[10px] text-gray-400 uppercase font-bold tracking-widest">Відстань</p>
-                                <p id="stat-distance" class="font-black text-2xl text-gray-800 tracking-tight">0.0 км</p>
+                        <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+                            <div class="border-l-4 border-orange-500 pl-3">
+                                <p class="text-[9px] text-gray-400 uppercase font-bold tracking-widest">Відстань</p>
+                                <p id="stat-distance" class="font-black text-xl text-gray-800 tracking-tight">0.0 км</p>
                             </div>
-                            <div class="border-l-4 border-blue-500 pl-4">
-                                <p class="text-[10px] text-gray-400 uppercase font-bold tracking-widest">Набір висоти</p>
-                                <p id="stat-elevation" class="font-black text-2xl text-gray-800 tracking-tight">0 м</p>
+                            <div class="border-l-4 border-blue-500 pl-3">
+                                <p class="text-[9px] text-gray-400 uppercase font-bold tracking-widest">Набір</p>
+                                <p id="stat-elevation" class="font-black text-xl text-gray-800 tracking-tight">0 м</p>
                             </div>
-                            <div class="border-l-4 border-red-500 pl-4">
-                                <p class="text-[10px] text-gray-400 uppercase font-bold tracking-widest">Пульс (сер.)</p>
-                                <p id="stat-hr" class="font-black text-2xl text-gray-800 tracking-tight">-- bpm</p>
+                            <div class="border-l-4 border-red-500 pl-3">
+                                <p class="text-[9px] text-gray-400 uppercase font-bold tracking-widest">Серце (avg)</p>
+                                <p id="stat-hr" class="font-black text-xl text-gray-800 tracking-tight">--</p>
                             </div>
-                            <div class="border-l-4 border-green-500 pl-4">
-                                <p class="text-[10px] text-gray-400 uppercase font-bold tracking-widest">Каденс (сер.)</p>
-                                <p id="stat-cad" class="font-black text-2xl text-gray-800 tracking-tight">-- rpm</p>
+                            <div class="border-l-4 border-green-500 pl-3">
+                                <p class="text-[9px] text-gray-400 uppercase font-bold tracking-widest">Каденс (avg)</p>
+                                <p id="stat-cad" class="font-black text-xl text-gray-800 tracking-tight">--</p>
+                            </div>
+                            <div class="border-l-4 border-purple-500 pl-3">
+                                <p class="text-[9px] text-gray-400 uppercase font-bold tracking-widest">Ватт (avg)</p>
+                                <p id="stat-pwr" class="font-black text-xl text-gray-800 tracking-tight">--</p>
                             </div>
                         </div>
                     </div>
 
                     <div id="chart-card" class="bg-white p-6 rounded-2xl shadow-md border border-gray-100">
-                        <div class="flex justify-between items-center mb-4">
+                        <div class="flex flex-wrap justify-between items-center gap-4 mb-4">
                             <h3 class="text-xs font-bold text-gray-500 uppercase tracking-widest">Аналіз телеметрії</h3>
-                            <div class="flex gap-2">
-                                <button id="view-elevation" class="text-[10px] px-2 py-1 bg-blue-100 text-blue-700 rounded font-bold uppercase">Висота</button>
-                                <button id="view-hr" class="text-[10px] px-2 py-1 bg-gray-100 text-gray-600 rounded font-bold uppercase">Пульс</button>
+                            <div class="flex flex-wrap gap-2" id="chart-controls">
+                                <button data-type="elevation" class="chart-tab active bg-blue-100 text-blue-700 text-[10px] px-3 py-1 rounded font-bold uppercase transition">Висота</button>
+                                <button data-type="hr" class="chart-tab bg-gray-100 text-gray-400 text-[10px] px-3 py-1 rounded font-bold uppercase transition opacity-50 cursor-not-allowed" disabled>Пульс</button>
+                                <button data-type="cad" class="chart-tab bg-gray-100 text-gray-400 text-[10px] px-3 py-1 rounded font-bold uppercase transition opacity-50 cursor-not-allowed" disabled>Каденс</button>
+                                <button data-type="pwr" class="chart-tab bg-gray-100 text-gray-400 text-[10px] px-3 py-1 rounded font-bold uppercase transition opacity-50 cursor-not-allowed" disabled>Потужність</button>
                             </div>
                         </div>
                         <div class="chart-container">
@@ -164,7 +195,14 @@
         let cropLayer = null, cropHandles = [], editMarkers = [];
         let historyStack = [], redoStack = [];
         let statsChart = null;
-        let activeChartType = 'elevation'; // 'elevation' or 'hr'
+        let activeChartType = 'elevation';
+
+        const CHART_CONFIGS = {
+            elevation: { label: 'Висота (м)', color: '#3b82f6', bg: 'rgba(59, 130, 246, 0.1)' },
+            hr: { label: 'Пульс (bpm)', color: '#ef4444', bg: 'rgba(239, 68, 68, 0.1)' },
+            cad: { label: 'Каденс (rpm)', color: '#10b981', bg: 'rgba(16, 185, 129, 0.1)' },
+            pwr: { label: 'Потужність (W)', color: '#a855f7', bg: 'rgba(168, 85, 247, 0.1)' }
+        };
 
         function initMap() {
             map = L.map('map', { doubleClickZoom: false }).setView([49.9935, 36.2304], 9);
@@ -174,33 +212,59 @@
 
             map.on('click', (e) => { if (isEditMode) insertPointAt(e.latlng); });
             
+            document.querySelectorAll('.chart-tab').forEach(btn => {
+                btn.onclick = () => {
+                    if (btn.disabled) return;
+                    activeChartType = btn.dataset.type;
+                    updateTabsUI();
+                    updateStatsUI();
+                };
+            });
+
             window.addEventListener('keydown', (e) => {
                 if ((e.ctrlKey || e.metaKey) && e.key === 'z') { e.preventDefault(); undoAction(); }
                 if ((e.ctrlKey || e.metaKey) && e.key === 'y') { e.preventDefault(); redoAction(); }
             });
-
-            document.getElementById('view-elevation').onclick = () => switchChart('elevation');
-            document.getElementById('view-hr').onclick = () => switchChart('hr');
         }
 
-        function switchChart(type) {
-            activeChartType = type;
-            document.getElementById('view-elevation').className = type === 'elevation' ? 'text-[10px] px-2 py-1 bg-blue-100 text-blue-700 rounded font-bold uppercase' : 'text-[10px] px-2 py-1 bg-gray-100 text-gray-600 rounded font-bold uppercase';
-            document.getElementById('view-hr').className = type === 'hr' ? 'text-[10px] px-2 py-1 bg-red-100 text-red-700 rounded font-bold uppercase' : 'text-[10px] px-2 py-1 bg-gray-100 text-gray-600 rounded font-bold uppercase';
-            updateStatsUI();
+        function updateTabsUI() {
+            document.querySelectorAll('.chart-tab').forEach(btn => {
+                const type = btn.dataset.type;
+                if (btn.disabled) return;
+                const color = getTabColor(type);
+                if (type === activeChartType) {
+                    btn.className = `chart-tab active bg-${color}-100 text-${color}-700 text-[10px] px-3 py-1 rounded font-bold uppercase transition`;
+                } else {
+                    btn.className = `chart-tab bg-gray-100 text-gray-600 text-[10px] px-3 py-1 rounded font-bold uppercase transition hover:bg-gray-200`;
+                }
+            });
+        }
+
+        function getTabColor(type) {
+            switch(type) {
+                case 'elevation': return 'blue';
+                case 'hr': return 'red';
+                case 'cad': return 'green';
+                case 'pwr': return 'purple';
+                default: return 'gray';
+            }
         }
 
         function calculateStats() {
-            if (trackPoints.length < 2) return { distance: 0, elevationGain: 0, avgHR: 0, avgCad: 0, distances: [0], elevations: [0], hr: [0] };
+            if (trackPoints.length < 2) return null;
             
             let totalDist = 0;
             let elevationGain = 0;
-            let hrSum = 0, hrCount = 0;
-            let cadSum = 0, cadCount = 0;
+            let sums = { hr: 0, cad: 0, pwr: 0 };
+            let counts = { hr: 0, cad: 0, pwr: 0 };
             
-            let distances = [0];
-            let elevations = [trackPoints[0].ele || 0];
-            let hrData = [trackPoints[0].hr || 0];
+            let data = {
+                distances: [0],
+                elevation: [parseFloat(trackPoints[0].ele || 0)],
+                hr: [parseInt(trackPoints[0].hr || 0)],
+                cad: [parseInt(trackPoints[0].cad || 0)],
+                pwr: [parseInt(trackPoints[0].pwr || 0)]
+            };
 
             for (let i = 1; i < trackPoints.length; i++) {
                 const p1 = L.latLng(trackPoints[i-1].lat, trackPoints[i-1].lng);
@@ -212,61 +276,81 @@
                 const e2 = parseFloat(trackPoints[i].ele || 0);
                 if (e2 > e1) elevationGain += (e2 - e1);
                 
-                if (trackPoints[i].hr) { hrSum += parseInt(trackPoints[i].hr); hrCount++; }
-                if (trackPoints[i].cad) { cadSum += parseInt(trackPoints[i].cad); cadCount++; }
+                ['hr', 'cad', 'pwr'].forEach(key => {
+                    const val = parseInt(trackPoints[i][key]);
+                    if (!isNaN(val) && val > 0) {
+                        sums[key] += val;
+                        counts[key]++;
+                    }
+                });
 
-                distances.push((totalDist / 1000).toFixed(2));
-                elevations.push(e2.toFixed(1));
-                hrData.push(trackPoints[i].hr || 0);
+                data.distances.push((totalDist / 1000).toFixed(2));
+                data.elevation.push(e2.toFixed(1));
+                data.hr.push(trackPoints[i].hr || 0);
+                data.cad.push(trackPoints[i].cad || 0);
+                data.pwr.push(trackPoints[i].pwr || 0);
             }
 
             return { 
                 distance: (totalDist / 1000).toFixed(2), 
                 elevationGain: Math.round(elevationGain),
-                avgHR: hrCount > 0 ? Math.round(hrSum / hrCount) : 0,
-                avgCad: cadCount > 0 ? Math.round(cadSum / cadCount) : 0,
-                distances, 
-                elevations,
-                hr: hrData
+                avg: {
+                    hr: counts.hr > 0 ? Math.round(sums.hr / counts.hr) : 0,
+                    cad: counts.cad > 0 ? Math.round(sums.cad / counts.cad) : 0,
+                    pwr: counts.pwr > 0 ? Math.round(sums.pwr / counts.pwr) : 0
+                },
+                counts,
+                data
             };
         }
 
         function updateStatsUI() {
             const stats = calculateStats();
+            if (!stats) return;
+
             document.getElementById('stat-distance').innerText = stats.distance + " км";
             document.getElementById('stat-elevation').innerText = stats.elevationGain + " м";
-            document.getElementById('stat-hr').innerText = stats.avgHR > 0 ? stats.avgHR + " bpm" : "--";
-            document.getElementById('stat-cad').innerText = stats.avgCad > 0 ? stats.avgCad + " rpm" : "--";
+            document.getElementById('stat-hr').innerText = stats.avg.hr > 0 ? stats.avg.hr + " bpm" : "--";
+            document.getElementById('stat-cad').innerText = stats.avg.cad > 0 ? stats.avg.cad + " rpm" : "--";
+            document.getElementById('stat-pwr').innerText = stats.avg.pwr > 0 ? stats.avg.pwr + " W" : "--";
             
+            document.querySelectorAll('.chart-tab').forEach(btn => {
+                const type = btn.dataset.type;
+                if (type === 'elevation') return;
+                const hasData = stats.counts[type] > 0;
+                btn.disabled = !hasData;
+                btn.style.opacity = hasData ? "1" : "0.4";
+                btn.style.cursor = hasData ? "pointer" : "not-allowed";
+                if (activeChartType === type && !hasData) activeChartType = 'elevation';
+            });
+
+            updateTabsUI();
             document.getElementById('data-visualization').classList.remove('hidden');
-            renderChart(stats.distances, activeChartType === 'elevation' ? stats.elevations : stats.hr);
+            
+            const config = CHART_CONFIGS[activeChartType];
+            renderChart(stats.data.distances, stats.data[activeChartType], config);
         }
 
-        function renderChart(labels, data) {
+        function renderChart(labels, data, config) {
             const ctx = document.getElementById('statsChart').getContext('2d');
-            const color = activeChartType === 'elevation' ? '#3b82f6' : '#ef4444';
-            const bgColor = activeChartType === 'elevation' ? 'rgba(59, 130, 246, 0.1)' : 'rgba(239, 68, 68, 0.1)';
-            const labelName = activeChartType === 'elevation' ? 'Висота (м)' : 'Пульс (bpm)';
-
             if (statsChart) {
                 statsChart.data.labels = labels;
                 statsChart.data.datasets[0].data = data;
-                statsChart.data.datasets[0].label = labelName;
-                statsChart.data.datasets[0].borderColor = color;
-                statsChart.data.datasets[0].backgroundColor = bgColor;
+                statsChart.data.datasets[0].label = config.label;
+                statsChart.data.datasets[0].borderColor = config.color;
+                statsChart.data.datasets[0].backgroundColor = config.bg;
                 statsChart.update('none');
                 return;
             }
-
             statsChart = new Chart(ctx, {
                 type: 'line',
                 data: {
                     labels: labels,
                     datasets: [{
-                        label: labelName,
+                        label: config.label,
                         data: data,
-                        borderColor: color,
-                        backgroundColor: bgColor,
+                        borderColor: config.color,
+                        backgroundColor: config.bg,
                         fill: true,
                         borderWidth: 2,
                         pointRadius: 0,
@@ -276,21 +360,69 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    interaction: { intersect: false, mode: 'index' },
                     plugins: { legend: { display: false } },
                     scales: {
-                        x: { 
-                            title: { display: true, text: 'Відстань (км)', font: { size: 10 } },
-                            ticks: { maxTicksLimit: 12, font: { size: 9 } }
-                        },
-                        y: { 
-                            ticks: { font: { size: 9 } }
-                        }
+                        x: { ticks: { maxTicksLimit: 12, font: { size: 9 } } },
+                        y: { ticks: { font: { size: 9 } } }
                     }
                 }
             });
         }
 
-        // --- ПАРСИНГ ---
+        async function parseGpxFile(file) {
+            const text = await file.text();
+            const xml = new DOMParser().parseFromString(text, "text/xml");
+            const pts = Array.from(xml.querySelectorAll('trkpt'));
+            trackPoints = pts.map(pt => ({
+                lat: parseFloat(pt.getAttribute('lat')),
+                lng: parseFloat(pt.getAttribute('lon')),
+                time: pt.querySelector('time')?.textContent,
+                ele: pt.querySelector('ele')?.textContent,
+                hr: pt.querySelector('hr')?.textContent || pt.getElementsByTagNameNS('*', 'hr')[0]?.textContent,
+                cad: pt.querySelector('cad')?.textContent || pt.getElementsByTagNameNS('*', 'cad')[0]?.textContent,
+                pwr: pt.querySelector('power')?.textContent || pt.getElementsByTagNameNS('*', 'power')[0]?.textContent
+            }));
+        }
+
+        async function parseFitFile(file) {
+            const buffer = await file.arrayBuffer();
+            let Constructor = window.FitParser?.default || window.FitParser;
+            if (!Constructor) throw new Error("FitParser не завантажено.");
+            const fitParser = new Constructor({ force: true, mode: 'both' });
+            return new Promise((resolve, reject) => {
+                fitParser.parse(buffer, (error, data) => {
+                    if (error) return reject(new Error(error));
+                    const scToDeg = (sc) => sc * (180 / Math.pow(2, 31));
+                    let records = data.records || [];
+                    if (records.length === 0 && data.activity?.sessions) {
+                        data.activity.sessions.forEach(s => s.laps?.forEach(l => { if (l.records) records = records.concat(l.records); }));
+                    }
+                    trackPoints = records.filter(r => r.position_lat !== undefined).map(r => ({
+                        lat: scToDeg(r.position_lat),
+                        lng: scToDeg(r.position_long),
+                        time: r.timestamp ? new Date(r.timestamp).toISOString() : null,
+                        ele: r.altitude,
+                        hr: r.heart_rate,
+                        cad: r.cadence,
+                        pwr: r.power
+                    }));
+                    if (trackPoints.length === 0) reject(new Error("Точок не знайдено."));
+                    else resolve();
+                });
+            });
+        }
+
+        function drawTrack(fit = false) {
+            if (trackLayer) map.removeLayer(trackLayer);
+            if (trackPoints.length === 0) return;
+            const latlngs = trackPoints.map(p => [p.lat, p.lng]);
+            trackLayer = L.polyline(latlngs, { color: '#ff4400', weight: 4, interactive: false }).addTo(map);
+            if (isEditMode) renderEditMarkers();
+            if (fit) map.fitBounds(trackLayer.getBounds(), { padding: [40, 40] });
+            document.getElementById('export-btn').disabled = false;
+            updateStatsUI();
+        }
 
         function saveToHistory() {
             historyStack.push(JSON.stringify(trackPoints));
@@ -324,91 +456,25 @@
             const file = e.target.files[0];
             if (!file) return;
             document.getElementById('loading-overlay').classList.remove('hidden');
-            document.getElementById('status-badge').innerText = "Обробка...";
-            
             try {
                 if (file.name.toLowerCase().endsWith('.fit')) await parseFitFile(file);
                 else await parseGpxFile(file);
-                
                 historyStack = []; redoStack = [];
                 updateUndoRedoButtons();
                 drawTrack(true);
-                document.getElementById('status-badge').innerText = "Завантажено: " + trackPoints.length;
+                document.getElementById('status-badge').innerText = "ГОТОВО";
                 document.getElementById('status-badge').className = "px-3 py-1 bg-green-100 text-green-700 text-xs font-bold rounded-full uppercase";
-            } catch (err) {
-                alert("Помилка: " + err.message);
-                document.getElementById('status-badge').innerText = "Помилка";
-            } finally {
+            } catch (err) { alert(err.message); } finally {
                 document.getElementById('loading-overlay').classList.add('hidden');
             }
         });
 
-        async function parseGpxFile(file) {
-            const text = await file.text();
-            const xml = new DOMParser().parseFromString(text, "text/xml");
-            const pts = Array.from(xml.querySelectorAll('trkpt'));
-            trackPoints = pts.map(pt => ({
-                lat: parseFloat(pt.getAttribute('lat')),
-                lng: parseFloat(pt.getAttribute('lon')),
-                time: pt.querySelector('time')?.textContent,
-                ele: pt.querySelector('ele')?.textContent,
-                hr: pt.getElementsByTagNameNS('*', 'hr')[0]?.textContent || pt.querySelector('hr')?.textContent,
-                cad: pt.getElementsByTagNameNS('*', 'cad')[0]?.textContent || pt.querySelector('cad')?.textContent
-            }));
-        }
-
-        async function parseFitFile(file) {
-            const buffer = await file.arrayBuffer();
-            let Constructor = window.FitParser?.default || window.FitParser;
-            if (!Constructor) throw new Error("FitParser не завантажено.");
-            const fitParser = new Constructor({ force: true, mode: 'both' });
-            return new Promise((resolve, reject) => {
-                fitParser.parse(buffer, (error, data) => {
-                    if (error) return reject(new Error(error));
-                    const scToDeg = (sc) => sc * (180 / Math.pow(2, 31));
-                    let records = data.records || [];
-                    if (records.length === 0 && data.activity?.sessions) {
-                        data.activity.sessions.forEach(s => s.laps?.forEach(l => { if (l.records) records = records.concat(l.records); }));
-                    }
-                    trackPoints = records.filter(r => r.position_lat !== undefined).map(r => ({
-                        lat: scToDeg(r.position_lat),
-                        lng: scToDeg(r.position_long),
-                        time: r.timestamp ? new Date(r.timestamp).toISOString() : null,
-                        ele: r.altitude,
-                        hr: r.heart_rate,
-                        cad: r.cadence
-                    }));
-                    if (trackPoints.length === 0) reject(new Error("Точок не знайдено."));
-                    else resolve();
-                });
-            });
-        }
-
-        function drawTrack(fit = false) {
-            if (trackLayer) map.removeLayer(trackLayer);
-            if (trackPoints.length === 0) return;
-            const latlngs = trackPoints.map(p => [p.lat, p.lng]);
-            trackLayer = L.polyline(latlngs, { color: '#ff4400', weight: 4, interactive: false }).addTo(map);
-            if (isEditMode) renderEditMarkers();
-            if (fit) map.fitBounds(trackLayer.getBounds(), { padding: [40, 40] });
-            document.getElementById('export-btn').disabled = false;
-            updateStatsUI();
-        }
-
-        // --- РЕДАГУВАННЯ ---
-
         document.getElementById('btn-toggle-edit').addEventListener('click', function() {
             if (isCropMode) document.getElementById('btn-toggle-crop').click();
             isEditMode = !isEditMode;
-            if (isEditMode) {
-                this.innerHTML = "<span>✅</span> Завершити";
-                this.classList.replace('bg-gray-100', 'bg-green-100');
-                renderEditMarkers();
-            } else {
-                this.innerHTML = "<span>✏️</span> Редагувати";
-                this.classList.replace('bg-green-100', 'bg-gray-100');
-                clearEditMarkers();
-            }
+            this.innerHTML = isEditMode ? "<span>✅</span> Завершити" : "<span>✏️</span> Редагувати";
+            this.classList.toggle('bg-green-100', isEditMode);
+            if (isEditMode) renderEditMarkers(); else clearEditMarkers();
         });
 
         function renderEditMarkers() {
@@ -446,23 +512,19 @@
             drawTrack(false);
         }
 
-        // --- ОБРІЗКА ---
-
         document.getElementById('btn-toggle-crop').addEventListener('click', function() {
             if (isEditMode) document.getElementById('btn-toggle-edit').click();
             isCropMode = !isCropMode;
+            this.innerHTML = isCropMode ? "<span>❌</span> Скасувати" : "<span>🟦</span> Виділити область";
+            document.getElementById('btn-apply-crop').classList.toggle('hidden', !isCropMode);
             if (isCropMode) {
-                this.innerHTML = "<span>❌</span> Скасувати";
-                this.classList.replace('bg-gray-100', 'bg-red-100');
-                document.getElementById('btn-apply-crop').classList.remove('hidden');
                 const b = map.getBounds().pad(-0.2);
                 cropLayer = L.rectangle(b, { color: "#3b82f6", weight: 2, fillOpacity: 0.1, dashArray: '5, 5' }).addTo(map);
-                const cs = [b.getNorthWest(), b.getNorthEast(), b.getSouthWest(), b.getSouthEast()];
-                cs.forEach((ll, i) => {
+                [b.getNorthWest(), b.getNorthEast(), b.getSouthWest(), b.getSouthEast()].forEach((ll, i) => {
                     const m = L.marker(ll, { draggable: true, icon: L.divIcon({ className: 'crop-handle', iconSize: [12, 12] }) }).addTo(map);
                     m.on('drag', () => {
                         const ls = cropHandles.map(h => h.getLatLng());
-                        let nb = (i===0) ? L.latLngBounds(ls[0], ls[3]) : (i===1) ? L.latLngBounds(ls[1], ls[2]) : (i===2) ? L.latLngBounds(ls[2], ls[1]) : L.latLngBounds(ls[3], ls[0]);
+                        let nb = (i===0)?L.latLngBounds(ls[0],ls[3]):(i===1)?L.latLngBounds(ls[1],ls[2]):(i===2)?L.latLngBounds(ls[2],ls[1]):L.latLngBounds(ls[3],ls[0]);
                         cropLayer.setBounds(nb);
                         cropHandles[0].setLatLng(nb.getNorthWest()); cropHandles[1].setLatLng(nb.getNorthEast());
                         cropHandles[2].setLatLng(nb.getSouthWest()); cropHandles[3].setLatLng(nb.getSouthEast());
@@ -470,9 +532,6 @@
                     cropHandles.push(m);
                 });
             } else {
-                this.innerHTML = "<span>🟦</span> Виділити область";
-                this.classList.replace('bg-red-100', 'bg-gray-100');
-                document.getElementById('btn-apply-crop').classList.add('hidden');
                 if (cropLayer) map.removeLayer(cropLayer);
                 cropHandles.forEach(h => map.removeLayer(h));
                 cropLayer = null; cropHandles = [];
@@ -488,18 +547,17 @@
             drawTrack(false);
         });
 
-        // --- ЕКСПОРТ ---
-
         document.getElementById('export-btn').addEventListener('click', () => {
             const header = '<?xml version="1.0" encoding="UTF-8"?><gpx version="1.1" creator="StravaFixer" xmlns="http://www.topografix.com/GPX/1/1" xmlns:gpxtpx="http://www.garmin.com/xmlschemas/TrackPointExtension/v1"><trk><name>Fixed Activity</name><trkseg>';
             const body = trackPoints.map(p => {
                 let s = `<trkpt lat="${p.lat.toFixed(6)}" lon="${p.lng.toFixed(6)}">`;
                 if (p.ele !== undefined) s += `<ele>${p.ele}</ele>`;
                 if (p.time) s += `<time>${p.time}</time>`;
-                if (p.hr || p.cad) {
+                if (p.hr || p.cad || p.pwr) {
                     s += `<extensions><gpxtpx:TrackPointExtension>`;
                     if (p.hr) s += `<gpxtpx:hr>${p.hr}</gpxtpx:hr>`;
                     if (p.cad) s += `<gpxtpx:cad>${p.cad}</gpxtpx:cad>`;
+                    if (p.pwr) s += `<gpxtpx:pwr>${p.pwr}</gpxtpx:pwr>`;
                     s += `</gpxtpx:TrackPointExtension></extensions>`;
                 }
                 s += `</trkpt>`;
@@ -512,8 +570,6 @@
             a.click();
         });
 
-        document.getElementById('btn-undo').addEventListener('click', undoAction);
-        document.getElementById('btn-redo').addEventListener('click', redoAction);
         window.onload = initMap;
     </script>
 </body>
